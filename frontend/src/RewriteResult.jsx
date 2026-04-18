@@ -95,7 +95,7 @@ export default function RewriteResult({ data, onEdit, onStartOver }) {
         <article className="result-card">
           <div className="result-card-head">
             <div className="result-card-label">
-              <IconEnvelopeSmall />
+              <span className="result-header-icon result-header-icon--sm" aria-hidden="true">💌</span>
               <span>How you feel</span>
             </div>
             <CopyButton label="Copy" text={data.howYouFeel} />
@@ -112,7 +112,7 @@ export default function RewriteResult({ data, onEdit, onStartOver }) {
         <article className="result-card">
           <div className="result-card-head">
             <div className="result-card-label">
-              <IconEnvelopeSmall />
+              <span className="result-header-icon result-header-icon--sm" aria-hidden="true">💌</span>
               <span>What would help</span>
             </div>
             <CopyButton label="Copy" text={helpText} />

@@ -2,19 +2,15 @@ import { useState } from 'react'
 import RewriteResult from './RewriteResult.jsx'
 import './App.css'
 
-const FEELING_OPTIONS = [
-  'Frustrated',
-  'Hurt',
-  'Angry',
-  'Sad',
-  'Anxious',
-  'Confused',
-  'Hopeful',
-  'Overwhelmed',
-  'Lonely',
-  'Disappointed',
-  'Scared',
-  'Tired',
+const FEELING_OPTIONS_PRIMARY = [
+  'Angry', 'Frustrated', 'Upset', 'Sad', 'Disappointed', 'Hurt',
+  'Anxious', 'Overwhelmed', 'Ignored', 'Confused', 'Lonely', 'Unappreciated',
+  'Hopeful', 'Scared', 'Tired',
+]
+
+const FEELING_OPTIONS_MORE = [
+  'Triggered', 'Neglected', 'Resentful', 'Irritated', 'Insecure',
+  'Drained', 'On edge', 'Missing you', 'Dismissed', 'Taken for granted',
 ]
 
 function Heart({ className = '' }) {
@@ -71,8 +67,11 @@ export default function App() {
   const [rewrite, setRewrite] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
+  const [harmBlocked, setHarmBlocked] = useState(false)
+  const [unclearInput, setUnclearInput] = useState(false)
 
   const maxFeelings = 4
+  const [showMoreFeelings, setShowMoreFeelings] = useState(false)
 
   const addFeeling = (value) => {
     if (!value || feelings.length >= maxFeelings) return
@@ -86,6 +85,11 @@ export default function App() {
 
   const handleFeelingSelect = (e) => {
     const v = e.target.value
+    if (v === '__more__') {
+      setShowMoreFeelings(true)
+      e.target.value = ''
+      return
+    }
     addFeeling(v)
     e.target.value = ''
   }
@@ -97,11 +101,15 @@ export default function App() {
     setRewrite(null)
     setScreen('form')
     setFormError(null)
+    setHarmBlocked(false)
+    setUnclearInput(false)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFormError(null)
+    setHarmBlocked(false)
+    setUnclearInput(false)
     setSubmitting(true)
     try {
       const res = await fetch('/api/v1/chats/rewrite', {
@@ -117,6 +125,14 @@ export default function App() {
         throw new Error('Server returned invalid JSON')
       }
       if (!res.ok) {
+        if (json.error === 'HARM_DETECTED') {
+          setHarmBlocked(true)
+          return
+        }
+        if (json.error === 'UNCLEAR_INPUT' || res.status === 422) {
+          setUnclearInput(true)
+          return
+        }
         throw new Error(json.error || `Request failed (${res.status})`)
       }
       const normalized = normalizeRewritePayload(json)
@@ -169,7 +185,41 @@ export default function App() {
           <Heart className="patchup-divider-heart" />
           <span className="patchup-divider-line" />
         </div>
+        <p className="patchup-disclaimer">Private by design. Nothing you share is stored.</p>
       </header>
+
+      {harmBlocked && (
+        <div className="popup-overlay" role="dialog" aria-modal="true">
+          <div className="popup-box">
+            <p className="popup-body">
+              It looks like this message involves physical harm. This space is meant to feel safe for both people.
+            </p>
+            <button
+              type="button"
+              className="popup-btn"
+              onClick={() => setHarmBlocked(false)}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+      {unclearInput && (
+        <div className="popup-overlay" role="dialog" aria-modal="true">
+          <div className="popup-box">
+            <p className="popup-body">
+              We couldn&apos;t quite follow that. Could you try describing what happened in a bit more detail? Even a sentence or two gives us enough to work with.
+            </p>
+            <button
+              type="button"
+              className="popup-btn"
+              onClick={() => setUnclearInput(false)}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="patchup-main">
         {formError && (
@@ -196,13 +246,23 @@ export default function App() {
               <option value="" disabled>
                 What are you feeling right now?
               </option>
-              {FEELING_OPTIONS.map((opt) => (
+              {FEELING_OPTIONS_PRIMARY.map((opt) => (
                 <option
                   key={opt}
                   value={opt}
-                  disabled={
-                    feelings.includes(opt) || feelings.length >= maxFeelings
-                  }
+                  disabled={feelings.includes(opt) || feelings.length >= maxFeelings}
+                >
+                  {opt}
+                </option>
+              ))}
+              {!showMoreFeelings && (
+                <option value="__more__">More emotions...</option>
+              )}
+              {showMoreFeelings && FEELING_OPTIONS_MORE.map((opt) => (
+                <option
+                  key={opt}
+                  value={opt}
+                  disabled={feelings.includes(opt) || feelings.length >= maxFeelings}
                 >
                   {opt}
                 </option>
@@ -243,9 +303,14 @@ export default function App() {
               className="patchup-textarea"
               rows={6}
               value={vent}
-              onChange={(e) => setVent(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value.length <= 500) setVent(e.target.value)
+              }}
               placeholder="Say everything you feel. Don't worry about how it sounds."
             />
+            <p className={`patchup-wordcount ${vent.length >= 470 ? 'patchup-wordcount--warn' : ''}`}>
+              {vent.length} / 500 characters
+            </p>
           </section>
 
           <section className="patchup-card">

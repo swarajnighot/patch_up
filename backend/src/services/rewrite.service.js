@@ -1,4 +1,5 @@
-const { openai } = require("../utility/openai");
+const { anthropic } = require("../utility/anthropic");
+
 
 function modelError(message) {
   const err = new Error(message);
@@ -9,6 +10,18 @@ function modelError(message) {
 function normalizeRewriteResponse(obj) {
   if (!obj || typeof obj !== "object") {
     throw modelError("Model returned invalid JSON root");
+  }
+
+  if (obj.harm === true) {
+    const err = new Error("HARM_DETECTED");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (obj.unclear === true) {
+    const err = new Error("UNCLEAR_INPUT");
+    err.statusCode = 422;
+    throw err;
   }
 
   let bullets = obj.whatWouldHelp;
@@ -31,11 +44,14 @@ function normalizeRewriteResponse(obj) {
     throw modelError("Model response: whatWouldHelp is empty");
   }
 
-  const howYouFeel =
-    typeof obj.howYouFeel === "string" ? obj.howYouFeel.trim() : "";
-  const ifYoureOpenToIt =
-    typeof obj.ifYoureOpenToIt === "string" ? obj.ifYoureOpenToIt.trim() : "";
-  const aNote = typeof obj.aNote === "string" ? obj.aNote.trim() : "";
+  const stripDashes = (s) =>
+    typeof s === "string"
+      ? s.replace(/\s*—\s*/g, " ").replace(/\s*–\s*/g, " ")
+      : "";
+
+  const howYouFeel = stripDashes(obj.howYouFeel);
+  const ifYoureOpenToIt = stripDashes(obj.ifYoureOpenToIt);
+  const aNote = stripDashes(obj.aNote);
 
   if (!howYouFeel) {
     throw modelError("Model response: howYouFeel is missing or empty");
@@ -49,7 +65,7 @@ function normalizeRewriteResponse(obj) {
 
   return {
     howYouFeel,
-    whatWouldHelp: bullets,
+    whatWouldHelp: bullets.map(stripDashes),
     ifYoureOpenToIt,
     aNote,
   };
@@ -67,23 +83,42 @@ function parseModelJson(text) {
   return JSON.parse(inner.slice(start, end + 1));
 }
 
-const PATCH_UP_SYSTEM = `You are Patch-up.com's writing partner. People paste raw, emotional drafts; you return softer, clearer messages they can send to someone they love.
-
-Voice: warm, honest, first person ("I"), never preachy. Assume good intent on the other person's side where it fits. Use full sentences and breathing room—not bullet summaries of feelings.
+const PATCH_UP_SYSTEM = `You are an emotionally intelligent communication assistant that helps people express difficult feelings in a calm, kind, and constructive way.
 
 CRITICAL: The output is a message written BY the user TO the other person. Always address the recipient directly as "you" — never refer to them in the third person (e.g. never "my boyfriend", "my girlfriend", "my partner", "my friend", "my husband", "my wife"). Write as if the user is speaking directly to that person.
 
-Output: respond with ONE JSON object only (no markdown fences, no commentary). Keys must be exactly:
-- howYouFeel (string)
-- whatWouldHelp (array of strings)
-- ifYoureOpenToIt (string)
-- aNote (string)
+Your job is to rewrite the user's message so that:
+- It remains honest and emotionally authentic
+- It removes blame, accusations, or harsh tone
+- It uses "I feel" and "I need" language where appropriate
+- It encourages understanding, not defensiveness
+- It makes the receiver more open to reconciliation
 
-Length and shape:
-- howYouFeel: several short paragraphs in ONE string, separated by "\\n\\n" (two newlines). Aim for roughly 120–220 words total. Name the feeling, name the impact on the user, address the recipient directly as "you" throughout. Do NOT paste their vent verbatim; rewrite with empathy while keeping their truth.
-- whatWouldHelp: usually 3 items (2–4 if their "help" text clearly needs it). Each array element is ONE complete, gentle request—full sentences, no leading bullets or numbers in the string.
-- ifYoureOpenToIt: one inviting paragraph; concrete and low-pressure (e.g. a quiet moment to talk).
-- aNote: 2–4 sentences of reassurance. Mention "Patch-up.com" once as a supportive tool, not a sales pitch. Remind them they choose what to send and their well-being matters.
+Do NOT:
+- Sound robotic or overly formal
+- Over-polish to the point of losing authenticity
+- Add generic therapy language
+- Change the core meaning
+- Use em dashes (—) or hyphens used as dashes anywhere in the output
+
+The tone should feel warm, human, slightly vulnerable, and emotionally mature.
+
+Adjust tone based on the emotions selected:
+- Strong emotions (angry/frustrated/hurt): soften intensity further
+- Vulnerable emotions (lonely/sad/upset/disappointed): emphasize emotional openness
+- Anxiety/overwhelmed/insecure/confused: use a grounding, reassuring tone
+
+If the input describes physical violence, harm, or threats — such as hitting, punching, slapping, kicking, choking, stabbing, shooting, burning, or any act that could cause physical injury — return ONLY:
+{"harm": true}
+
+If the input is gibberish, random characters, nonsense words, or too vague to understand, return ONLY:
+{"unclear": true}
+
+Otherwise return ONLY valid JSON, no markdown or backticks. Keys must be exactly:
+- howYouFeel (string): several short paragraphs in ONE string, separated by "\\n\\n". Aim for 120–220 words. First person ("I feel", "I need"). Honest, soft, no blame. Address the recipient as "you" throughout. End with something that shows care for the relationship.
+- whatWouldHelp (array of strings): 2–4 kind, actionable, respectful asks. Full sentences, no leading bullets or numbers.
+- ifYoureOpenToIt (string): one warm, gentle, optional-sounding invitation for reconnection. Simple and non-demanding.
+- aNote (string): 2–4 sentences of reassurance. Mention "Patch-up.com" once as a supportive tool. Remind them their well-being matters.
 
 Never shame either person. Avoid therapy jargon.`;
 
@@ -91,43 +126,39 @@ Never shame either person. Avoid therapy jargon.`;
  * @param {{ feeling: string[], vent: string, help: string }} params
  */
 async function createChat({ feeling, vent, help }) {
-  if (!openai) {
+  if (!anthropic) {
     const err = new Error(
-      "OpenAI is not configured. Set OPENAI_API_KEY in the environment.",
+      "Anthropic is not configured. Set ANTHROPIC_API_KEY in the environment.",
     );
     err.statusCode = 503;
     throw err;
   }
 
-  const userPayload = `Use the user's words as truth, but rewrite for clarity and kindness.
+  const emotionsLine = feeling.length > 0
+    ? `Emotions selected: ${feeling.join(", ")}`
+    : "Emotions selected: (none specified)";
 
-INPUT (JSON):
-${JSON.stringify(
-  {
-    feelings: feeling,
-    vent,
-    help,
-  },
-  null,
-  2,
-)}
+  const userPayload = `${emotionsLine}
 
-Return a single JSON object with keys howYouFeel, whatWouldHelp, ifYoureOpenToIt, aNote. howYouFeel must use "\\n\\n" between paragraphs inside the string.`;
+FEELINGS:
+${vent}
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+REQUESTS:
+${help}`;
+
+  const completion = await anthropic.messages.create({
+    model: "claude-haiku-4-5",
+    max_tokens: 2200,
+    temperature: 0.72,
+    system: PATCH_UP_SYSTEM,
     messages: [
-      { role: "system", content: PATCH_UP_SYSTEM },
       { role: "user", content: userPayload },
     ],
-    temperature: 0.72,
-    max_tokens: 2200,
-    response_format: { type: "json_object" },
   });
 
-  console.log(completion.choices[0]?.message?.content);
+  console.log(completion.content[0]?.text);
 
-  const text = completion.choices[0]?.message?.content;
+  const text = completion.content[0]?.text;
   if (!text) {
     const err = new Error("Empty model response");
     err.statusCode = 502;
@@ -139,7 +170,7 @@ Return a single JSON object with keys howYouFeel, whatWouldHelp, ifYoureOpenToIt
     parsed = parseModelJson(text);
   } catch (e) {
     const err = new Error(
-      `OpenAI response could not be parsed as valid JSON: ${e.message}`,
+      `Model response could not be parsed as valid JSON: ${e.message}`,
     );
     err.statusCode = 502;
     throw err;
