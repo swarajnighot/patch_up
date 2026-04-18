@@ -1,5 +1,51 @@
 import { useState } from 'react'
 
+function StarRating() {
+  const [rating, setRating] = useState(0)
+  const [hovered, setHovered] = useState(0)
+  const [submitted, setSubmitted] = useState(false)
+
+  async function handleClick(n) {
+    setRating(n)
+    setSubmitted(true)
+    try {
+      await fetch('/api/v1/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: n }),
+      })
+    } catch {
+      // silent — feedback is best-effort
+    }
+  }
+
+  if (submitted) {
+    return (
+      <p className="result-check-feedback" role="status">
+        Thank you for your feedback!
+      </p>
+    )
+  }
+
+  return (
+    <div className="result-star-row" role="group" aria-label="Rate your experience">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          className={`result-star ${(hovered || rating) >= n ? 'result-star--filled' : ''}`}
+          aria-label={`${n} star${n > 1 ? 's' : ''}`}
+          onClick={() => handleClick(n)}
+          onMouseEnter={() => setHovered(n)}
+          onMouseLeave={() => setHovered(0)}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function IconEnvelopeSmall() {
   return (
     <svg className="result-icon-sm" viewBox="0 0 20 16" aria-hidden="true">
@@ -150,12 +196,9 @@ export default function RewriteResult({ data, onEdit, onStartOver }) {
         <article className="result-card result-card-actions">
           <h2 className="result-actions-title">Does this feel right?</h2>
           <p className="result-actions-hint">
-            If something feels off, edit it. It&apos;s your message.
+            If something feels off, start over and try again.
           </p>
           <div className="result-pill-row">
-            <button type="button" className="result-pill" onClick={onEdit}>
-              Edit
-            </button>
             <button type="button" className="result-pill" onClick={onStartOver}>
               Start over
             </button>
@@ -191,6 +234,12 @@ export default function RewriteResult({ data, onEdit, onStartOver }) {
                 : 'Take your time. Go back and edit until it feels kind and clear.'}
             </p>
           )}
+        </article>
+
+        <article className="result-card result-card-actions">
+          <h2 className="result-actions-title">How did we do?</h2>
+          <p className="result-actions-hint">Rate your experience. 5 stars is excellent.</p>
+          <StarRating />
         </article>
       </main>
 

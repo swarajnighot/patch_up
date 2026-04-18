@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import RewriteResult from './RewriteResult.jsx'
 import './App.css'
 
@@ -65,10 +65,18 @@ export default function App() {
   const [vent, setVent] = useState('')
   const [help, setHelp] = useState('')
   const [rewrite, setRewrite] = useState(null)
+  const [ratingStats, setRatingStats] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
   const [harmBlocked, setHarmBlocked] = useState(false)
   const [unclearInput, setUnclearInput] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/v1/feedback/stats')
+      .then(r => r.json())
+      .then(d => { if (d.total > 0) setRatingStats(d) })
+      .catch(() => {})
+  }, [])
 
   const maxFeelings = 4
   const [showMoreFeelings, setShowMoreFeelings] = useState(false)
@@ -186,6 +194,12 @@ export default function App() {
           <span className="patchup-divider-line" />
         </div>
         <p className="patchup-disclaimer">Private by design. Nothing you share is stored.</p>
+        {ratingStats && (
+          <p className="patchup-rating-badge">
+            {'★'.repeat(Math.round(ratingStats.average))}{'☆'.repeat(5 - Math.round(ratingStats.average))}
+            {' '}{ratingStats.average} / 5 &nbsp;·&nbsp; {ratingStats.total} {ratingStats.total === 1 ? 'rating' : 'ratings'}
+          </p>
+        )}
       </header>
 
       {harmBlocked && (
