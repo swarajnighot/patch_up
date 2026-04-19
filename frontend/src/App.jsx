@@ -367,7 +367,8 @@ export default function App() {
           <Heart />
         </div>
         <p className="patchup-copyright">
-          © {new Date().getFullYear()} Patch-up.com · All rights reserved
+          © {new Date().getFullYear()} Patch-up.com · All rights reserved ·{' '}
+          <a href="#" className="disclaimer-link" onClick={(e) => { e.preventDefault(); window.open('/Privacy Policy_Draft.pdf', 'PrivacyPolicy', 'width=800,height=600,scrollbars=yes,resizable=yes'); }}>Privacy Policy</a>
         </p>
       </footer>
     </div>

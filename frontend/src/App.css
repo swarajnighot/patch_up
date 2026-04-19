@@ -306,6 +306,17 @@
   color: var(--patch-text-soft);
 }
 
+.disclaimer-link {
+  color: #c07070;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: inherit;
+}
+
+.disclaimer-link:hover {
+  color: #e05050;
+}
+
 .patchup-error {
   background: #fff0f0;
   border: 1px solid var(--patch-border);
