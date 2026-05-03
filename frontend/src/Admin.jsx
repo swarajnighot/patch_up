@@ -1,15 +1,57 @@
 import { useState, useEffect } from 'react'
 
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD
+
+function PasswordGate({ onUnlock }) {
+  const [input, setInput] = useState('')
+  const [failed, setFailed] = useState(false)
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (ADMIN_PASSWORD && input === ADMIN_PASSWORD) {
+      sessionStorage.setItem('admin_unlocked', '1')
+      onUnlock()
+    } else {
+      setFailed(true)
+      setInput('')
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: '12px' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '260px' }}>
+        <label htmlFor="admin-pw" style={{ fontWeight: 600 }}>Admin password</label>
+        <input
+          id="admin-pw"
+          type="password"
+          value={input}
+          onChange={e => { setInput(e.target.value); setFailed(false) }}
+          autoFocus
+          style={{ padding: '8px', fontSize: '1rem', borderRadius: '6px', border: '1px solid #ccc' }}
+        />
+        {failed && <p style={{ color: '#c00', margin: 0, fontSize: '0.875rem' }}>Incorrect password.</p>}
+        <button type="submit" style={{ padding: '8px', borderRadius: '6px', cursor: 'pointer' }}>Unlock</button>
+      </form>
+    </div>
+  )
+}
+
 export default function Admin() {
+  const [unlocked, setUnlocked] = useState(
+    !ADMIN_PASSWORD || sessionStorage.getItem('admin_unlocked') === '1'
+  )
   const [stats, setStats] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    if (!unlocked) return
     fetch('/api/v1/feedback/stats')
       .then(r => r.json())
       .then(setStats)
       .catch(() => setError('Failed to load stats'))
-  }, [])
+  }, [unlocked])
+
+  if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />
 
   if (error) return <div className="admin-page"><p className="admin-error">{error}</p></div>
   if (!stats) return <div className="admin-page"><p className="admin-loading">Loading...</p></div>
