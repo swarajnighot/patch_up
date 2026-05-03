@@ -37,12 +37,13 @@ function PasswordGate({ onUnlock }) {
 }
 
 const EVENT_LABELS = {
-  page_view:     'Page views',
-  rewrite_click: 'Rewrite clicks',
-  start_over:    'Start over',
-  opens_a_door:  'It opens a door',
-  not_quite_yet: 'Not quite yet',
-  copy_section:  'Total copies',
+  page_view:       'Page views',
+  rewrite_click:   'Rewrite clicks',
+  whatsapp_share:  'WhatsApp shares',
+  copy_section:    'Total copies',
+  start_over:      'Start over',
+  opens_a_door:    'It opens a door',
+  not_quite_yet:   'Not quite yet',
 }
 
 const SECTION_LABELS = {
