@@ -287,6 +287,8 @@ export default function RewriteResult({ data, onEdit, onStartOver }) {
         <p className="result-copyright">
           © {new Date().getFullYear()} Patch-up.com · All rights reserved ·{' '}
           <a href="#" className="disclaimer-link" onClick={(e) => { e.preventDefault(); window.open('/Privacy Policy_Draft.pdf', 'PrivacyPolicy', 'width=800,height=600,scrollbars=yes,resizable=yes'); }}>Privacy Policy</a>
+          {' '}·{' '}
+          <a href="#" className="disclaimer-link" onClick={(e) => { e.preventDefault(); window.open('/Terms of Use.pdf', 'TermsOfUse', 'width=800,height=600,scrollbars=yes,resizable=yes'); }}>Terms of Use</a>
         </p>
       </footer>
     </div>
