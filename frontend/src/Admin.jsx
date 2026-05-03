@@ -36,11 +36,26 @@ function PasswordGate({ onUnlock }) {
   )
 }
 
+const EVENT_LABELS = {
+  page_view:     'Page views',
+  rewrite_click: 'Rewrite clicks',
+  start_over:    'Start over',
+  opens_a_door:  'It opens a door',
+  not_quite_yet: 'Not quite yet',
+  copy_section:  'Total copies',
+}
+
+const SECTION_LABELS = {
+  how_you_feel:    'How you feel',
+  what_would_help: 'What would help',
+}
+
 export default function Admin() {
   const [unlocked, setUnlocked] = useState(
     !ADMIN_PASSWORD || sessionStorage.getItem('admin_unlocked') === '1'
   )
   const [stats, setStats] = useState(null)
+  const [analytics, setAnalytics] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -49,6 +64,10 @@ export default function Admin() {
       .then(r => r.json())
       .then(setStats)
       .catch(() => setError('Failed to load stats'))
+    fetch('/api/v1/analytics/stats')
+      .then(r => r.json())
+      .then(setAnalytics)
+      .catch(() => {})
   }, [unlocked])
 
   if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />
@@ -90,6 +109,64 @@ export default function Admin() {
           )
         })}
       </div>
+
+      {analytics && (
+        <>
+          <div className="admin-breakdown" style={{ marginTop: '2rem' }}>
+            <h2 className="admin-section-title">User Actions</h2>
+            {Object.entries(EVENT_LABELS).map(([key, label]) => {
+              const count = analytics.events[key] || 0
+              const maxCount = Math.max(...Object.keys(EVENT_LABELS).map(k => analytics.events[k] || 0), 1)
+              const pct = Math.round((count / maxCount) * 100)
+              return (
+                <div key={key} className="admin-bar-row">
+                  <span className="admin-bar-label" style={{ minWidth: '140px' }}>{label}</span>
+                  <div className="admin-bar-track">
+                    <div className="admin-bar-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="admin-bar-count">{count}</span>
+                </div>
+              )
+            })}
+          </div>
+
+          {Object.keys(analytics.copyBreakdown).length > 0 && (
+            <div className="admin-breakdown" style={{ marginTop: '2rem' }}>
+              <h2 className="admin-section-title">Copies by Section</h2>
+              {Object.entries(analytics.copyBreakdown).map(([section, count]) => (
+                <div key={section} className="admin-bar-row">
+                  <span className="admin-bar-label" style={{ minWidth: '140px' }}>
+                    {SECTION_LABELS[section] || section}
+                  </span>
+                  <div className="admin-bar-track">
+                    <div className="admin-bar-fill" style={{ width: '100%' }} />
+                  </div>
+                  <span className="admin-bar-count">{count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {analytics.geo.length > 0 && (
+            <div className="admin-breakdown" style={{ marginTop: '2rem' }}>
+              <h2 className="admin-section-title">Top Countries</h2>
+              {analytics.geo.map(({ country, count }) => {
+                const maxGeo = analytics.geo[0].count
+                const pct = Math.round((count / maxGeo) * 100)
+                return (
+                  <div key={country} className="admin-bar-row">
+                    <span className="admin-bar-label" style={{ minWidth: '140px' }}>{country}</span>
+                    <div className="admin-bar-track">
+                      <div className="admin-bar-fill" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="admin-bar-count">{count}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import RewriteResult from './RewriteResult.jsx'
+import { trackEvent } from './analytics.js'
 import './App.css'
 
 const FEELING_OPTIONS_PRIMARY = [
@@ -72,6 +73,7 @@ export default function App() {
   const [unclearInput, setUnclearInput] = useState(false)
 
   useEffect(() => {
+    trackEvent('page_view')
     fetch('/api/v1/feedback/stats')
       .then(r => r.json())
       .then(d => { if (d.total > 0) setRatingStats(d) })
@@ -152,6 +154,7 @@ export default function App() {
       }
       setRewrite(normalized)
       setScreen('result')
+      trackEvent('rewrite_click')
     } catch (err) {
       setFormError(err.message || 'Something went wrong')
     } finally {

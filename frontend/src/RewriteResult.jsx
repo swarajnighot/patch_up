@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { trackEvent } from './analytics.js'
 
 function StarRating() {
   const [rating, setRating] = useState(0)
@@ -100,7 +101,7 @@ async function copyText(text, onDone) {
   }
 }
 
-function CopyButton({ label, text }) {
+function CopyButton({ label, text, section }) {
   const [status, setStatus] = useState('idle')
   return (
     <button
@@ -108,6 +109,7 @@ function CopyButton({ label, text }) {
       className="result-copy-btn"
       onClick={() =>
         copyText(text, (s) => {
+          if (s === 'ok') trackEvent('copy_section', { section })
           setStatus(s)
           setTimeout(() => setStatus('idle'), 2000)
         })
@@ -144,7 +146,7 @@ export default function RewriteResult({ data, onEdit, onStartOver }) {
               <span className="result-header-icon result-header-icon--sm" aria-hidden="true">💌</span>
               <span>How you feel</span>
             </div>
-            <CopyButton label="Copy" text={data.howYouFeel} />
+            <CopyButton label="Copy" text={data.howYouFeel} section="how_you_feel" />
           </div>
           <div className="result-body-stack">
             {data.howYouFeel.split(/\n\n+/).map((para, i) => (
@@ -161,7 +163,7 @@ export default function RewriteResult({ data, onEdit, onStartOver }) {
               <span className="result-header-icon result-header-icon--sm" aria-hidden="true">💌</span>
               <span>What would help</span>
             </div>
-            <CopyButton label="Copy" text={helpText} />
+            <CopyButton label="Copy" text={helpText} section="what_would_help" />
           </div>
           <ul className="result-list">
             {data.whatWouldHelp.map((item, index) => (
@@ -199,7 +201,7 @@ export default function RewriteResult({ data, onEdit, onStartOver }) {
             If something feels off, start over and try again.
           </p>
           <div className="result-pill-row">
-            <button type="button" className="result-pill" onClick={onStartOver}>
+            <button type="button" className="result-pill" onClick={() => { trackEvent('start_over'); onStartOver() }}>
               Start over
             </button>
           </div>
@@ -215,14 +217,14 @@ export default function RewriteResult({ data, onEdit, onStartOver }) {
             <button
               type="button"
               className="result-pill"
-              onClick={() => setLastCheck('open')}
+              onClick={() => { trackEvent('opens_a_door'); setLastCheck('open') }}
             >
               It opens a door
             </button>
             <button
               type="button"
               className="result-pill"
-              onClick={() => setLastCheck('wait')}
+              onClick={() => { trackEvent('not_quite_yet'); setLastCheck('wait') }}
             >
               Not quite yet
             </button>
