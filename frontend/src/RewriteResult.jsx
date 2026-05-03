@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { trackEvent } from './analytics.js'
 
 function StarRating() {
@@ -123,6 +123,16 @@ function CopyButton({ label, text, section }) {
 export default function RewriteResult({ data, onEdit, onStartOver }) {
   const helpText = data.whatWouldHelp.join('\n')
   const [lastCheck, setLastCheck] = useState(null)
+
+  useEffect(() => {
+    function handleKeyboardCopy() {
+      if (window.getSelection()?.toString().length > 0) {
+        trackEvent('copy_section', { section: 'other' })
+      }
+    }
+    document.addEventListener('copy', handleKeyboardCopy)
+    return () => document.removeEventListener('copy', handleKeyboardCopy)
+  }, [])
 
   return (
     <div className="result-page">

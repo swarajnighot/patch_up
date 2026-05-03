@@ -48,6 +48,7 @@ const EVENT_LABELS = {
 const SECTION_LABELS = {
   how_you_feel:    'How you feel',
   what_would_help: 'What would help',
+  other:           'Other Copy',
 }
 
 export default function Admin() {
