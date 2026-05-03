@@ -78,9 +78,23 @@ export default function Admin() {
   const stars = [5, 4, 3, 2, 1]
   const max = stats.total > 0 ? Math.max(...stars.map(s => stats.breakdown[s] || 0)) : 1
 
+  function handleLogout() {
+    sessionStorage.removeItem('admin_unlocked')
+    setUnlocked(false)
+  }
+
   return (
     <div className="admin-page">
-      <h1 className="admin-title">Feedback Dashboard</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 className="admin-title" style={{ margin: 0 }}>Feedback Dashboard</h1>
+        <button
+          type="button"
+          onClick={handleLogout}
+          style={{ padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.875rem' }}
+        >
+          Log out
+        </button>
+      </div>
 
       <div className="admin-summary">
         <div className="admin-stat">
